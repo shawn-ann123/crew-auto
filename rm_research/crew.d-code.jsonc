@@ -1,0 +1,22 @@
+{
+  "name": "D 已采纳方案的实施规划",
+  "agents": ["implementation_planner", "test_planner"],
+  "tasks": [
+    {
+      "name": "编写实施任务书",
+      "description": "读取项目根目录《审核方案.md》，只处理人工改成 [x] 采纳的条目。对每条采纳项，再查阅内部方案库、优化设想、可行性评估和模块基线，生成 code/实施任务书.md。任务书必须可追溯到审核编号，包含目标、依赖顺序、工作项、先行小实验、风险、失败判据、回退方式和验收目标。证据等级为 C 时只能先做小实验，不得直接规划全面实施。两条已采纳方案冲突时标记「待人工裁决」，不自行取舍。用 FileWriterTool 原子写入。",
+      "expected_output": "已采纳条目数、任务目录和阻断项。",
+      "agent": "implementation_planner"
+    },
+    {
+      "name": "设计验收用例",
+      "description": "只为 code/实施任务书.md 中的任务设计验收用例，写入 code/验收用例.md。每条包含可复现场景、当前基线对照、实验组、指标、通过阈值、样本量、数据记录方式、前置依赖和中止条件。打符、自瞄和共用模块必须使用各自对应的模拟场景；先做离线验证，再做闭环验证。用 FileWriterTool 原子写入。",
+      "expected_output": "用例数、覆盖的审核编号和未覆盖原因。",
+      "agent": "test_planner"
+    }
+  ],
+  "process": "sequential",
+  "verbose": true,
+  "memory": false,
+  "inputs": {}
+}

@@ -1,0 +1,32 @@
+[project]
+name = "rm_research"
+version = "0.1.0"
+description = "RM 打符项目研究 workflow using crewAI"
+authors = [{ name = "Your Name", email = "you@example.com" }]
+requires-python = ">=3.10,<3.14"
+dependencies = [
+    "crewai[tools]>=1.15.28,<2.0.0"
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+only-include = [
+    "agents",
+    "llms.py",
+    "crew.a-baseline.jsonc",
+    "crew.b-digest.jsonc",
+    "crew.c-synthesis.jsonc",
+    "crew.d-code.jsonc",
+    "审核方案.md",
+    "tools",
+    "knowledge",
+    "skills",
+]
+
+[tool.crewai]
+type = "crew"
+definition = "crew.a-baseline.jsonc"
+project_id = "6a7cbc71-7ff0-4eb0-8adf-2133b9fac0cf"

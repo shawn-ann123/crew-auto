@@ -1,0 +1,15 @@
+[Unit]
+Description=RM research nightly workflow
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=1800
+StartLimitBurst=4
+
+[Service]
+Type=oneshot
+WorkingDirectory=@@PROJECT_DIR@@
+ExecStart=@@PROJECT_DIR@@/run.sh auto-nightly
+Restart=on-failure
+RestartSec=5min
+RestartPreventExitStatus=4 7
+TimeoutStartSec=infinity

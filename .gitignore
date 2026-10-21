@@ -1,0 +1,61 @@
+# 真实配置与密钥（只提交 .env.example）
+.env
+.env.*
+**/.env
+**/.env.*
+!.env.example
+!**/.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*credentials*.json
+*secrets*.json
+*tokens*.json
+
+# 本地 Python / CrewAI 环境
+**/.venv/
+**/__pycache__/
+**/*.py[cod]
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+**/.crewai/
+
+# 运行日志、锁、状态库和临时文件
+**/*.log
+**/*.db
+**/*.sqlite
+**/*.sqlite3
+**/run.lock
+**/*.pid
+**/logs/**
+**/queue/**
+!**/logs/.gitkeep
+!**/queue/.gitkeep
+
+# 用户提供的项目材料与个人偏好
+DESIGN.md
+rm_research/materials/**
+rm_research/baseline/**
+rm_research/knowledge/user_preference.txt
+!rm_research/materials/.gitkeep
+!rm_research/baseline/.gitkeep
+
+# 检索结果、证据库、方案与人工审核内容
+rm_research/library/**
+rm_research/nights/**
+rm_research/proposals/**
+rm_research/code/**
+rm_research/审核方案.md
+!rm_research/library/.gitkeep
+!rm_research/nights/.gitkeep
+!rm_research/proposals/.gitkeep
+!rm_research/code/.gitkeep
+
+# 编辑器和操作系统本地文件
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~

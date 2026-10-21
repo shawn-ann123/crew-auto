@@ -1,0 +1,12 @@
+[Unit]
+Description=Check whether RM nightly research is due
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=15min
+AccuracySec=1min
+Persistent=true
+Unit=rm-research-nightly.service
+
+[Install]
+WantedBy=timers.target

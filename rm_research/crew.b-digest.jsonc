@@ -1,0 +1,64 @@
+{
+  // 阶段 B：每晚跑一轮，只处理新文献；产出笔记、账本和夜间清单。
+  "name": "B 每晚文献消化",
+
+  "agents": [
+    "lit_researcher",
+    "oss_scout",
+    "cross_domain_scout",
+    "paper_digester",
+    "night_librarian"
+  ],
+
+  "tasks": [
+    {
+      "name": "论文增量检索",
+      "description": "日期 {date}。这是增量检索，只找尚未消化过的新论文，不要重搜历史。\n\n1) 用 FileReadTool 读取 baseline/检索计划.md；用 library_stats 查看各模块已有的论文/跨域数量。\n2) 按检索计划里的轮换规则，选 1-2 个覆盖最少的模块作为今晚重点。\n3) 先用这些模块的 arXiv 检索式调用 arxiv_search_new，每个模块最多 2 次、每次 max_results=6；再用同一模块的英文关键词调用 scholar_search（OpenAlex + Semantic Scholar），最多 2 次、每次 max_results=6。两个工具都会自动排除 library/processed.json 中已处理的论文；不要使用旧的 arxiv_search。\n4) 合并候选并按标题/DOI/arXiv ID 去重；优先选择有可读正文（arXiv 或 OA PDF）的论文。筛选：与模块困难真正相关、方法可迁移、不是纯综述或纯应用介绍。宁缺毋滥，最多保留 {papers_per_night} 篇；如果没有合格论文，明确写「今晚无合格新增」。\n同一检索式空结果或失败，最多换 1 次同义词重试；仍无结果就记录原因，不要反复重试。检索失败不阻断后续，保留已得候选并如实写明。\n\n输出内容（完整写入 queue/{date}-papers.md，作为最终回答）：\n- 今晚重点模块与所用检索式\n- 候选清单，每条含：推荐 item_id（arXiv ID 或 DOI/S2/OpenAlex ID）、标题、年份、venue、链接、正文来源（arXiv / OA PDF / 仅摘要）、归属模块、对应的基线开放难点（引用 M 编号与第⑩项）、它补的是哪个证据缺口、为什么相关（2-3 句）\n不要编造论文或 ID。\n\n最终回答只返回：重点模块 + 选中篇数 + item_id 列表。",
+      "expected_output": "queue/{date}-papers.md 写入候选清单；回答就是这份完整清单。",
+      "agent": "lit_researcher",
+      "output_file": "queue/{date}-papers.md"
+    },
+    {
+      "name": "工程增量检索",
+      "description": "日期 {date}。这是增量检索，只找尚未消化过的新仓库。\n\n1) 用 FileReadTool 读取 baseline/检索计划.md；用 library_stats 查看各模块的仓库覆盖。\n2) 选 1-2 个仓库证据最少的模块，使用其 GitHub 搜索词。\n3) 调用 github_search_new 最多 3 次、每次 max_results=6，注意未认证接口约 10 次/分钟限速，不要爆发式调用。工具会自动排除已处理仓库。\n4) 筛选：同类打符/自瞄整体项目优先，其次是模块级可借鉴实现；排除教程、空仓库、纯文档、与模块无关的仓库。最多保留 {repos_per_night} 个；没有合格项就写「今晚无合格新增」。\n\n输出内容（完整写入 queue/{date}-repos.md，作为最终回答）：\n- 目标模块与搜索词\n- 候选清单，每条含：full_name、链接、stars、最近更新、语言、归属模块、为什么值得精读（2-3 句）\n\n最终回答只返回：目标模块 + 选中数量 + full_name 列表。",
+      "expected_output": "queue/{date}-repos.md 写入仓库候选；回答就是这份完整清单。",
+      "agent": "oss_scout",
+      "output_file": "queue/{date}-repos.md"
+    },
+    {
+      "name": "跨域增量检索",
+      "description": "日期 {date}。这是跨域启发的增量检索，目标不是找同主题论文，而是找「问题结构相似、方法可迁移」的工作。\n\n1) 用 FileReadTool 读取 baseline/检索计划.md 中的跨域方向；用 library_stats 查看跨域覆盖。\n2) 选 1-2 个模块，使用其跨域英文关键词调用 arxiv_search_new，每个方向最多 2 次、每次 max_results=6，自动去重；若 arXiv 结果不足，可用 scholar_search 补充最多 2 次。\n3) 可以用 github_search_new 验证某方向是否有工程实现，但 GitHub 仓库不作为本晚跨域候选（工程候选统一走仓库队列）。\n4) 只保留真的能迁移的条目，最多 {cross_per_night} 篇；不要收录仅主题相近但问题不同的论文。可迁移性要指出具体机制（哪个模块、替换什么、为什么成立），不能只写「都是预测问题」。没有合格项就写「今晚无合格新增」。同一检索式失败最多换 1 次同义词，仍失败就记录，不反复重试。\n\n输出内容（完整写入 queue/{date}-cross.md，作为最终回答）：\n- 目标模块、跨域方向与关键词\n- 候选清单，每条含：推荐 item_id（arXiv ID 或 DOI/S2/OpenAlex ID）、标题、venue、链接、正文来源（arXiv / OA PDF / 仅摘要）、归属模块、对应的基线开放难点（引用 M 编号与第⑩项）、相似点、可迁移的方法结构、迁移到本项目的初步设想\n\n最终回答只返回：目标模块 + 选中数量 + item_id 列表。",
+      "expected_output": "queue/{date}-cross.md 写入跨域候选；回答就是这份完整清单。",
+      "agent": "cross_domain_scout",
+      "output_file": "queue/{date}-cross.md"
+    },
+    {
+      "name": "论文与跨域精读",
+      "description": "用 FileReadTool 读取 queue/{date}-papers.md 和 queue/{date}-cross.md。对其中每个候选（论文至多 {papers_per_night} 篇、跨域至多 {cross_per_night} 篇）做深读，并逐篇保存证据。\n\n精读方法：\n1) 先看候选的推荐 item_id：\n- arXiv ID（如 2502.00749、cs/0601001）：调用 arxiv_read（传不含版本号的 ID），默认返回摘要/方法/实验关键段落。若内容不足，可把 max_chars 调大到 24000 再读一次；最多读两次。若工具返回「仅摘要，未读正文」，如实标注，不要假装读过正文。\n- DOI / S2 / OpenAlex ID：不要调用 arxiv_read；只能基于 queue 文件里的摘要写方法卡，并在笔记和回答中标注「仅摘要」。摘要不足以支撑多张卡时只写 1 张主方法卡，不得编造实验数字。\n2) 写一份完整笔记，必须包含：\n- 基本信息：item_id、标题、年份、venue、链接、正文来源（arXiv/OA PDF/仅摘要）\n- 问题与场景\n- 方法总览：pipeline 各步骤\n- 方法卡（核心）：每张卡是一个可独立实现或替换的方法/组件，一篇通常 2-5 张。每张卡必须写：卡名、类型（主方法/组件/训练技巧/工程技巧/评测方法）、归属模块（引用基线 M 编号）、阅读深度（正文/仅摘要）、核心做法（到可复现粒度：输入、模型或公式、关键参数）、论文证据（数据集、指标、对比基线；注明是作者报告值，不是本项目预期）、实时性与算力（输入分辨率、推理/更新频率、CPU/GPU、显存、估计延迟；未报告就写「未报告」）、工程代价与依赖、失效模式与局限（什么条件下会退化或失败；不适用条件）、与当前主流做法的差异（没有显著差异就写「无」）\n- 与当前项目的关系：能替换或增强哪个模块的哪个边界\n- 存疑点\n不要把同一个方法拆成多张卡凑数，也不要把多个独立方法合并成一张卡。\n证据分级：A=有可运行代码或完整实验且已读正文/核查代码；B=论文有实验且已读正文；C=仅摘要、仅描述或仅 README 声明。仅摘要一律按 C，不得凭摘要声称实验结果；论文指标是作者报告值，写清数据集与基线，不要写成在本项目条件下的预期。\n3) 每读完一篇，调用 save_evidence 保存：kind=paper（跨域文献用 cross），item_id=候选的推荐 item_id（arXiv ID 优先，否则 DOI/S2/OpenAlex ID），title、modules（笔记涉及的 M 编号，逗号分隔）、summary（不超过 120 字）、content=完整笔记。\n\n硬性要求：每个候选都必须真正调用 save_evidence 落盘，保存失败的必须在回答中列出。最终回答只返回：每篇一行，格式为「item_id | 标题 | 正文来源（arXiv/OA PDF/仅摘要） | 笔记路径 | 方法卡数量 | save 状态」。",
+      "expected_output": "每篇论文/跨域文献都保存到 library/ 且含多张方法卡；回答为逐篇一行摘要与保存状态。",
+      "agent": "paper_digester"
+    },
+    {
+      "name": "工程精读",
+      "description": "用 FileReadTool 读取 queue/{date}-repos.md。对每个候选仓库（至多 {repos_per_night} 个）做精读并保存证据。\n\n1) 用 github_readme 读取 README；必要时用 ScrapeWebsiteTool 打开仓库主页补充目录、文档或示例信息。\n2) 写一份完整笔记，必须包含：\n- 仓库定位与技术栈\n- 目录/模块结构（真实存在的文件或目录）\n- 核心做法（尽量给出文件、类、函数、算法名等可核查线索）\n- 方法卡：每张卡是一个可独立借鉴的方法或工程技巧，写清类型、归属模块（基线 M 编号）、验证程度（代码已核查 / 仅 README / 仅页面描述）、核心做法、可验证线索、实时性与依赖、失效模式与维护风险、可迁移点、局限\n- 与基线模块的映射、工程质量与维护状态\n把 README 声明与代码实现分开写；没看到实现细节就标「仅声明」，不得把 README 的性能数字当作已验证结果。没有实现细节时如实写「仅有营销描述，无实现细节」，不要脑补。\n3) 每个仓库调用 save_evidence 保存：kind=repo，item_id=owner/repo，title、modules、summary、content=完整笔记。\n\n硬性要求：每个候选都必须真正落盘，失败项在回答中列出。最终回答只返回：每个仓库一行，格式为「full_name | 笔记路径 | 方法卡数量 | save 状态」。",
+      "expected_output": "每个仓库都保存到 library/repos 且含方法卡；回答为逐仓库一行摘要与保存状态。",
+      "agent": "oss_scout"
+    },
+    {
+      "name": "夜间清单",
+      "description": "日期 {date}。根据前面各步的实际结果和 library_stats 的统计，写一份如实的夜间记录。\n\n结构固定：\n# 夜间记录 {date}\n总体状态：DONE | DONE_WITH_CONCERNS | BLOCKED | NEEDS_CONTEXT（四选一，并给一句理由）\n## 本晚处理\n- 论文：逐条 item_id + 标题 + 笔记路径 + 方法卡数\n- 仓库：逐条 full_name + 笔记路径 + 方法卡数\n- 跨域：逐条 ID + 标题 + 笔记路径 + 方法卡数\n（只写实际保存成功的；某一类为空写「无」）\n## 完整性对账\n- 候选：论文 N / 仓库 N / 跨域 N；成功保存 M；失败或跳过 K；方法卡总数 C。\n- 必须满足「候选 = 成功保存 + 失败或跳过」；不一致时逐条说明差在哪里，不能糊弄。\n## 模块覆盖变化\n引用 library_stats 的结果，列出当前覆盖较弱的模块。\n## 异常与未完成\n逐条如实写：现象 / 根因（已知才写）/ 已尝试 / 对结论的影响。检索失败、限速、保存失败、仅摘要、无合格候选都算。连续两晚同类异常，在明晚建议里指出要改的配置文件或工具。\n## 明晚建议\n最多 3 条：优先模块、检索式调整；若有流程问题，写要改的配置文件/工具。\n\n不要写「综合结果」一节，C 阶段会追加。完整写入 nights/{date}.md，作为最终回答；文档开头先给一行统计摘要。",
+      "expected_output": "nights/{date}.md 写入完整夜间记录；回答就是这份完整记录。",
+      "agent": "night_librarian",
+      "output_file": "nights/{date}.md"
+    }
+  ],
+
+  "process": "sequential",
+  "verbose": true,
+  "memory": false,
+  "inputs": {
+    "papers_per_night": 1,
+    "repos_per_night": 1,
+    "cross_per_night": 1
+  }
+}
